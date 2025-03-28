@@ -21,6 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: dev
 
+    env:
+      ENVIRONMENT: ${{ github.environment }}
+
     permissions:
       id-token: write
       contents: read
@@ -28,8 +31,8 @@ jobs:
     steps:
       - name: Setup Environment variable
         run: |
-          echo "ENVIRONMENT=${{ github.environment }}" >> $GITHUB_ENV
-          echo "👷ENVIRONMENT: ${{ github.environment }}"
+          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
+          echo "👷ENVIRONMENT: $ENVIRONMENT"
 
       - name: Setup Runner
         run: |
@@ -51,7 +54,6 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Create Backend
         run: |
-          export ENVIRONMENT=${{ github.environment }}
           export AWS_S3_BACKEND=${{ secrets.AWS_S3_BACKEND }}
           export AWS_TABLE_LOCKING=${{ secrets.AWS_TABLE_LOCKING }}
           export AWS_S3_BACKEND_KEY=${{ secrets.AWS_S3_BACKEND_KEY }}
@@ -74,8 +76,8 @@ jobs:
           fi
 
           ## Create remote stats for environment if not exist
-          if aws s3 ls "s3://${{ secrets.AWS_S3_BACKEND }}/env:/${{ github.environment }}/${{ secrets.AWS_S3_BACKEND_KEY }}" ; then
-            echo "♻ S3 terraform state for ${{ github.environment }} already exists."
+          if aws s3 ls "s3://${{ secrets.AWS_S3_BACKEND }}/env:/$ENVIRONMENT/${{ secrets.AWS_S3_BACKEND_KEY }}" ; then
+            echo "♻ S3 terraform state for $ENVIRONMENT already exists."
           else
             j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY -e AWS_TABLE_LOCKING templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
             terraform init -backend-config backend.conf
@@ -86,7 +88,6 @@ jobs:
 
       - name: Init
         run: |
-          export ENVIRONMENT=${{ github.environment }}
           export AWS_S3_BACKEND=${{ secrets.AWS_S3_BACKEND }}
           export AWS_TABLE_LOCKING=${{ secrets.AWS_TABLE_LOCKING }}
           export AWS_S3_BACKEND_KEY=${{ secrets.AWS_S3_BACKEND_KEY }}
@@ -95,7 +96,7 @@ jobs:
           unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY AWS_TABLE_LOCKING
 
           terraform init -backend-config backend.conf
-          terraform workspace select ${{ github.environment }} && \
+          terraform workspace select $ENVIRONMENT && \
              echo "👷 $ENVIRONMENT workspace " || \
                 echo "🚨$ENVIRONMENT workspace don't exist🚨'"
 
