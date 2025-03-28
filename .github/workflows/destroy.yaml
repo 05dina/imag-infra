@@ -48,10 +48,10 @@ jobs:
 
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
-          with:
-            audience: sts.amazonaws.com
-            aws-region: ${{ vars.AWS_REGION }}
-            role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        with:
+          audience: sts.amazonaws.com
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
