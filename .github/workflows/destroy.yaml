@@ -1,0 +1,78 @@
+---
+name: Destroy
+run-name: Destroy Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      uphold:
+        description: "Do you confirm? yes/no"
+        required: true
+        type: boolean
+        default: false
+      environment:
+        description: "Environment for Destroy"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - staging
+          - prod
+          - backend
+jobs:
+  Destroy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Confirm Uphold
+        if: inputs.uphold == false
+          run: |
+            echo "🚫 Destruction aborted. You must confirm by setting uphold: true"
+            exit 1
+
+      - name: Setup Environment variable
+        run: |
+          echo "ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
+          echo "👷ENVIRONMENT: ${{ inputs.environment }}"
+
+      - name: Setup Runner
+        run: |
+          sudo apt update 2>&1> /dev/null
+          test -e /usr/bin/j2 || sudo apt install -y j2cli 2>&1> /dev/null && echo "✨ j2-> Istalled sussesfuly" || echo "💥 j2-> Installed faulere"
+          test -e /usr/bin/envsubst || sudo apt install -y gettext 2>&1> /dev/null  && echo "✨ envsubst-> Istalled sussesfuly" || echo "💥 envsubst-> Installed faulere"
+
+      - name: Checkout Template Code
+        uses: actions/checkout@v4
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+          with:
+            audience: sts.amazonaws.com
+            aws-region: ${{ inputs.REGION }}
+            role-to-assume: ${{ secrets.ROLE_ARN }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: |
+          export AWS_S3_BACKEND=${{ secrets.AWS_S3_BACKEND }}
+          export AWS_S3_BACKEND_KEY=${{ vars.AWS_S3_BACKEND_KEY }}
+
+          j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
+          unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY
+
+          terraform init -backend-config backend.conf
+          terraform workspace select ${{ inputs.environment }} && \
+            echo "👷 ${{ inputs.environment }} workspace " || \
+              echo "🚨${{ inputs.environment }} workspace don't exist🚨'"
+
+          echo "👷terraform workspace list" && terraform workspace list
+
+      - name: Destroy
+        run: |
+          terraform destroy -var environment=${{ inputs.environment }} -auto-approve && \
+            printf '%s\n' '✨✨✨' "✨✨  Destroy completed successfully for environment: ${{ inputs.environment }}   🏗️" '✨' || \
+              printf '%s\n' '🔥🔥🔥' '🔥🔥Error to Destroy    🚑️' '🔥'
