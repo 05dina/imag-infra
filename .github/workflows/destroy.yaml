@@ -27,10 +27,10 @@ jobs:
 
     steps:
       - name: Confirm Uphold
-        if: inputs.uphold == false
-          run: |
-            echo "🚫 Destruction aborted. You must confirm by setting uphold: true"
-            exit 1
+        if: ${{ inputs.uphold == false }}
+        run: |
+          echo "🚫 Destruction aborted. You must confirm by setting uphold: true"
+          exit 1
 
       - name: Setup Environment variable
         run: |
