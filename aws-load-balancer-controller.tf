@@ -10,7 +10,7 @@ data "aws_eks_cluster_auth" "this" {
 }
 
 provider "kubernetes" {
-  alias                  = "eks"
+  alias = "eks"
 
   host                   = try(data.aws_eks_cluster.this.endpoint, "")
   token                  = try(data.aws_eks_cluster_auth.this.token, "")

@@ -51,9 +51,10 @@ jobs:
         uses: hashicorp/setup-terraform@v3
       - name: Create Backend
         run: |
+          export ENVIRONMENT=${{ github.environment }}
           export AWS_S3_BACKEND=${{ secrets.AWS_S3_BACKEND }}
-          export AWS_S3_BACKEND_KEY=${{ secrets.AWS_S3_BACKEND_KEY }}
           export AWS_TABLE_LOCKING=${{ secrets.AWS_TABLE_LOCKING }}
+          export AWS_S3_BACKEND_KEY=${{ secrets.AWS_S3_BACKEND_KEY }}
 
           ## Create Bucket if not exist
           if aws s3 ls "s3://${{ secrets.AWS_S3_BACKEND }}" 2>&1 | grep -q 'NoSuchBucket'; then
@@ -66,7 +67,7 @@ jobs:
             terraform -chdir=bootstrap apply -auto-approve
             echo "✅ Terraform backend created successfully."
 
-            aws s3 cp bootstrap/terraform.tfstate s3://${{ secrets.AWS_S3_BACKEND }}/backend/ 
+            aws s3 cp bootstrap/terraform.tfstate s3://${{ secrets.AWS_S3_BACKEND }}/backend/terraform.tfstate
             echo "✨ Terraform backed up successfully."
           else
             echo "♻️ S3 bucket already exists."
@@ -76,26 +77,27 @@ jobs:
           if aws s3 ls "s3://${{ secrets.AWS_S3_BACKEND }}/env:/${{ github.environment }}/${{ secrets.AWS_S3_BACKEND_KEY }}" ; then
             echo "♻ S3 terraform state for ${{ github.environment }} already exists."
           else
-            j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
+            j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY -e AWS_TABLE_LOCKING templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
             terraform init -backend-config backend.conf
-            terraform workspace new ${{ github.environment }} && echo "👷 ${{ github.environment }} workspace "
+            terraform workspace new "$ENVIRONMENT" && echo "👷 $ENVIRONMENT workspace "
             terraform workspace list
             rm -fr .terraform* 2>&1 >/dev/null
           fi
-          unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY AWS_TABLE_LOCKING
 
       - name: Init
         run: |
+          export ENVIRONMENT=${{ github.environment }}
           export AWS_S3_BACKEND=${{ secrets.AWS_S3_BACKEND }}
+          export AWS_TABLE_LOCKING=${{ secrets.AWS_TABLE_LOCKING }}
           export AWS_S3_BACKEND_KEY=${{ secrets.AWS_S3_BACKEND_KEY }}
 
-          j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
-          unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY
+          j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY -e AWS_TABLE_LOCKING templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
+          unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY AWS_TABLE_LOCKING
 
           terraform init -backend-config backend.conf
           terraform workspace select ${{ github.environment }} && \
-             echo "👷 ${{ github.environment }} workspace " || \
-                echo "🚨${{ github.environment }} workspace don't exist🚨'"
+             echo "👷 $ENVIRONMENT workspace " || \
+                echo "🚨$ENVIRONMENT workspace don't exist🚨'"
 
           echo "👷terraform workspace list" && terraform workspace list
 
@@ -105,6 +107,6 @@ jobs:
 
       - name: Apply
         run: |
-          terraform apply -var environment=${{ github.environment }} -auto-approve && \
-             printf '%s\n' '✨✨✨' "✨✨  Deploy ${{ github.environment }}   🏗️ " '✨' || \
+          terraform apply -var "environment=$ENVIRONMENT" -auto-approve && \
+             printf '%s\n' '✨✨✨' "✨✨  Deploy $ENVIRONMENT  🏗️ " '✨' || \
                 printf '%s\n' '🔥🔥🔥' '🔥🔥Error to Deploy    🚑️' '🔥'
