@@ -25,6 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
 
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - name: Confirm Uphold
         if: ${{ inputs.uphold == false }}
