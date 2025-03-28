@@ -1,0 +1,10 @@
+---
+environments:
+  dev:
+    zones_numbers: 2
+    regions: us-east-1
+    cidr: 172.0.0.0/16
+    cidr_subnet_bits: 7
+    db_version: 17.4
+    db_storage: 5
+    db_instance_class: db.t3.micro

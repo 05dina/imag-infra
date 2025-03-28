@@ -1,0 +1,6 @@
+## j2 -e AWS_S3_BACKEND templates/backend.j2 -o backend.conf
+bucket         = "{{ AWS_S3_BACKEND }}"
+key            = "{{ AWS_S3_BACKEND_KEY }}"
+dynamodb_table = "{{ AWS_TABLE_LOCKING }}"
+region         = "{{ AWS_REGION }}"
+encrypt        = true
