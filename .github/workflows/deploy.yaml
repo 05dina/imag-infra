@@ -78,7 +78,7 @@ jobs:
           else
             j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY -e AWS_TABLE_LOCKING templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
             terraform init -backend-config backend.conf
-            terraform workspace new ${{ github.environment }} && echo "👷 ${{ github.environment }} workspace "
+            terraform workspace new "$ENVIRONMENT" && echo "👷 $ENVIRONMENT workspace "
             terraform workspace list
             rm -fr .terraform* 2>&1 >/dev/null
           fi
@@ -94,9 +94,9 @@ jobs:
           unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY AWS_TABLE_LOCKING
 
           terraform init -backend-config backend.conf
-          terraform workspace select ${{ github.environment }} && \
-             echo "👷 ${{ github.environment }} workspace " || \
-                echo "🚨${{ github.environment }} workspace don't exist🚨'"
+          terraform workspace select "$ENVIRONMENT" && \
+             echo "👷 $ENVIRONMENT workspace " || \
+                echo "🚨$ENVIRONMENT workspace don't exist🚨'"
 
           echo "👷terraform workspace list" && terraform workspace list
 
@@ -106,6 +106,6 @@ jobs:
 
       - name: Apply
         run: |
-          terraform apply -var environment=${{ github.environment }} -auto-approve && \
-             printf '%s\n' '✨✨✨' "✨✨  Deploy ${{ github.environment }}   🏗️ " '✨' || \
+          terraform apply -var "environment=$ENVIRONMENT" -auto-approve && \
+             printf '%s\n' '✨✨✨' "✨✨  Deploy $ENVIRONMENT   🏗️ " '✨' || \
                 printf '%s\n' '🔥🔥🔥' '🔥🔥Error to Deploy    🚑️' '🔥'
