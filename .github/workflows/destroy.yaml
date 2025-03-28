@@ -47,15 +47,15 @@ jobs:
           test -e /usr/bin/j2 || sudo apt install -y j2cli 2>&1> /dev/null && echo "✨ j2-> Istalled sussesfuly" || echo "💥 j2-> Installed faulere"
           test -e /usr/bin/envsubst || sudo apt install -y gettext 2>&1> /dev/null  && echo "✨ envsubst-> Istalled sussesfuly" || echo "💥 envsubst-> Installed faulere"
 
-      - name: Checkout Template Code
-        uses: actions/checkout@v4
-
       - name: Setup AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           audience: sts.amazonaws.com
           aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Checkout Template Code
+        uses: actions/checkout@v4
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3

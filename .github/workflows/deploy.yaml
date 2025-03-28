@@ -1,0 +1,110 @@
+name: Deploy Infrastructure
+run-name: Deploy Workflow
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'fix/*'
+      - 'feat/*'
+      - 'feature/*'
+    paths:
+      - '*.tf'
+      - 'config.yaml'
+      - 'templates/*.*'
+      - 'modules/*/*.tf'
+      - 'roles/*.json'
+      - 'policies/*.json'
+
+jobs:
+  Deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Setup Environment variable
+        run: |
+          echo "ENVIRONMENT=${{ github.environment }}" >> $GITHUB_ENV
+          echo "👷ENVIRONMENT: ${{ github.environment }}"
+
+      - name: Setup Runner
+        run: |
+          sudo apt update 2>&1> /dev/null
+          test -e /usr/bin/j2 || sudo apt install -y j2cli 2>&1> /dev/null && echo "✨ j2-> Istalled sussesfuly" || echo "💥 j2-> Installed faulere"
+          test -e /usr/bin/envsubst || sudo apt install -y gettext 2>&1> /dev/null  && echo "✨ envsubst-> Istalled sussesfuly" || echo "💥 envsubst-> Installed faulere"
+
+      - name: Setup AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          audience: sts.amazonaws.com
+          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Create Backend
+        run: |
+          export AWS_S3_BACKEND=${{ secrets.AWS_S3_BACKEND }}
+          export AWS_S3_BACKEND_KEY=${{ secrets.AWS_S3_BACKEND_KEY }}
+          export AWS_TABLE_LOCKING=${{ secrets.AWS_TABLE_LOCKING }}
+
+          ## Create Bucket if not exist
+          if aws s3 ls "s3://${{ secrets.AWS_S3_BACKEND }}" 2>&1 | grep -q 'NoSuchBucket'; then
+            echo "⚠️ Bucket not found, It will be created"
+
+            mkdir -p bootstrap
+            j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY -e AWS_TABLE_LOCKING templates/backend.tf.j2 -o bootstrap/main.tf
+
+            terraform -chdir=bootstrap init
+            terraform -chdir=bootstrap apply -auto-approve
+            echo "✅ Terraform backend created successfully."
+
+            aws s3 cp bootstrap/terraform.tfstate s3://${{ secrets.AWS_S3_BACKEND }}/backend/ 
+            echo "✨ Terraform backed up successfully."
+          else
+            echo "♻️ S3 bucket already exists."
+          fi
+
+          ## Create remote stats for environment if not exist
+          if aws s3 ls "s3://${{ secrets.AWS_S3_BACKEND }}/env:/${{ github.environment }}/${{ secrets.AWS_S3_BACKEND_KEY }}" ; then
+            echo "♻ S3 terraform state for ${{ github.environment }} already exists."
+          else
+            j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
+            terraform init -backend-config backend.conf
+            terraform workspace new ${{ github.environment }} && echo "👷 ${{ github.environment }} workspace "
+            terraform workspace list
+            rm -fr .terraform* 2>&1 >/dev/null
+          fi
+          unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY AWS_TABLE_LOCKING
+
+      - name: Init
+        run: |
+          export AWS_S3_BACKEND=${{ secrets.AWS_S3_BACKEND }}
+          export AWS_S3_BACKEND_KEY=${{ secrets.AWS_S3_BACKEND_KEY }}
+
+          j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
+          unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY
+
+          terraform init -backend-config backend.conf
+          terraform workspace select ${{ github.environment }} && \
+             echo "👷 ${{ github.environment }} workspace " || \
+                echo "🚨${{ github.environment }} workspace don't exist🚨'"
+
+          echo "👷terraform workspace list" && terraform workspace list
+
+      - name: Validate
+        run: |
+          terraform validate && echo "✅" || echo "💥"
+
+      - name: Apply
+        run: |
+          terraform apply -var environment=${{ github.environment }} -auto-approve && \
+             printf '%s\n' '✨✨✨' "✨✨  Deploy ${{ github.environment }}   🏗️ " '✨' || \
+                printf '%s\n' '🔥🔥🔥' '🔥🔥Error to Deploy    🚑️' '🔥'
