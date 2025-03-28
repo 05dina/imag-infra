@@ -29,11 +29,6 @@ jobs:
       contents: read
 
     steps:
-      - name: Setup Environment variable
-        run: |
-          echo ENVIRONMENT=${{ env.ENVIRONMENT }} >> $GITHUB_ENV
-          echo "👷ENVIRONMENT: ${{ env.ENVIRONMENT }}"
-
       - name: Setup Runner
         run: |
           sudo apt update 2>&1> /dev/null
@@ -76,12 +71,12 @@ jobs:
           fi
 
           ## Create remote stats for environment if not exist
-          if aws s3 ls s3://${{ secrets.AWS_S3_BACKEND }}/env:/${{ env.ENVIRONMENT }}/${{ secrets.AWS_S3_BACKEND_KEY }} ; then
-            echo "♻ S3 terraform state for ${{ env.ENVIRONMENT }} already exists."
+          if aws s3 ls s3://${{ secrets.AWS_S3_BACKEND }}/env:/dev/${{ secrets.AWS_S3_BACKEND_KEY }} ; then
+            echo "♻ S3 terraform state for dev already exists."
           else
             j2 -e AWS_S3_BACKEND -e AWS_S3_BACKEND_KEY -e AWS_TABLE_LOCKING templates/backend.j2 -o backend.conf && echo "✨ backend.conf"
             terraform init -backend-config backend.conf
-            terraform workspace new ${{ env.ENVIRONMENT }} && echo "👷${{ env.ENVIRONMENT }} workspace"
+            terraform workspace new dev && echo "👷dev workspace"
             terraform workspace list
             rm -fr .terraform* 2>&1 >/dev/null
           fi
@@ -96,9 +91,9 @@ jobs:
           unset AWS_S3_BACKEND AWS_S3_BACKEND_KEY AWS_TABLE_LOCKING
 
           terraform init -backend-config backend.conf
-          terraform workspace select ${{ env.ENVIRONMENT }} && \
-             echo "👷 ${{ env.ENVIRONMENT }} workspace " || \
-                echo "🚨${{ env.ENVIRONMENT }} workspace don't exist🚨'"
+          terraform workspace select dev && \
+             echo "👷dev workspace " || \
+                echo "🚨dev workspace don't exist🚨'"
 
           echo "👷terraform workspace list" && terraform workspace list
 
@@ -108,6 +103,6 @@ jobs:
 
       - name: Apply
         run: |
-          terraform apply -var environment=${{ env.ENVIRONMENT }} -auto-approve && \
-             printf '%s\n' '✨✨✨' "✨✨  Deploy ${{ env.ENVIRONMENT }}  🏗️ " '✨' || \
+          terraform apply -var environment=dev -auto-approve && \
+             printf '%s\n' '✨✨✨' "✨✨  Deploy  dev 🏗️ " '✨' || \
                 printf '%s\n' '🔥🔥🔥' '🔥🔥Error to Deploy    🚑️' '🔥'
