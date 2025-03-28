@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo1
+  namespace: demo1
+  labels:
+    app: demo1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo1
+  template:
+    metadata:
+      labels:
+        app: demo1
+    spec:
+      containers:
+        - name: demo1
+          image: 05dina/demo1:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PGDATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: demo1-secret
+                  key: PGDATABASE
+            - name: PGUSERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: demo1-secret
+                  key: PGUSERNAME
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: demo1-secret
+                  key: PGPASSWORD
+            - name: PGENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: demo1-secret
+                  key: PGENDPOINT
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+...
