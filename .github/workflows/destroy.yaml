@@ -80,5 +80,5 @@ jobs:
       - name: Destroy
         run: |
           terraform destroy -var environment=${{ inputs.environment }} -auto-approve && \
-            printf '%s\n' '✨✨✨' "✨✨  Destroy completed successfully for environment: ${{ inputs.environment }}   🏗️" '✨' || \
-              printf '%s\n' '🔥🔥🔥' '🔥🔥Error to Destroy    🚑️' '🔥'
+            printf '%s\n' '✨✨✨' "✨✨ Destroy completed successfully for environment: ${{ inputs.environment }}   🏗️" '✨' || \
+              printf '%s\n' '🔥🔥🔥' '🔥🔥 Error to Destroy 🚑️' '🔥'

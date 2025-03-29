@@ -4,11 +4,16 @@ locals {
 }
 
 resource "random_password" "rds_password" {
-  length  = 96
-  upper   = true
-  lower   = true
-  number  = true
-  special = false
+  length              = 127
+  upper               = true
+  lower               = true
+  numeric             = true
+  special             = false
+  override_characters = "ç×^€¤.]-_+)%#@!"
+
+  keepers = {
+    regenerate_when_changed = var.environment
+  }
 }
 
 module "rds-sg" {
