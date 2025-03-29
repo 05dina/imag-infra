@@ -104,5 +104,5 @@ jobs:
       - name: Apply
         run: |
           terraform apply -var environment=dev -auto-approve && \
-             printf '%s\n' '✨✨✨' "✨✨  Deploy  dev 🏗️ " '✨' || \
-                printf '%s\n' '🔥🔥🔥' '🔥🔥Error to Deploy    🚑️' '🔥'
+             printf '%s\n' '✨✨✨' "✨✨ Deploy  dev 🏗️ " '✨' || \
+                printf '%s\n' '🔥🔥🔥' '🔥🔥 Error to Deploy 🚑️' '🔥'
