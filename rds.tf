@@ -3,6 +3,14 @@ locals {
   engine_family = "postgres${split(".", local.env.db_version)[0]}"
 }
 
+resource "random_password" "rds_password" {
+  length  = 96
+  upper   = true
+  lower   = true
+  number  = true
+  special = false
+}
+
 module "rds-sg" {
   source = "terraform-aws-modules/security-group/aws//modules/postgresql"
 
@@ -25,7 +33,7 @@ module "rds" {
   engine_version                  = local.env.db_version
   db_name                         = local.db_credentials["PGDATABASE"]
   username                        = local.db_credentials["PGUSERNAME"]
-  password                        = local.db_credentials["PGPASSWORD"]
+  password                        = random_password.rds_password.result
   allocated_storage               = local.env.db_storage
   instance_class                  = local.env.db_instance_class
   skip_final_snapshot             = true
@@ -54,7 +62,7 @@ resource "aws_secretsmanager_secret_version" "update_pgendpoint" {
 
   secret_string = jsonencode({
     PGENDPOINT = module.rds.db_instance_endpoint
-    PGPASSWORD = local.db_credentials["PGPASSWORD"]
+    PGPASSWORD = random_password.rds_password.result
     PGUSERNAME = local.db_credentials["PGUSERNAME"]
     PGDATABASE = local.db_credentials["PGDATABASE"]
   })
