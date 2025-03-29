@@ -9,7 +9,6 @@ resource "random_password" "rds_password" {
   lower               = true
   numeric             = true
   special             = false
-  override_characters = "ç×^€¤.]-_+)%#@!"
 
   keepers = {
     regenerate_when_changed = var.environment
